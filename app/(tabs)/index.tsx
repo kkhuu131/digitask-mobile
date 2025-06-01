@@ -1,75 +1,189 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
+import { useAuthStore } from '@/stores/authStore';
+import { useDigimonStore } from '@/stores/petStore';
+import { useTaskStore } from '@/stores/taskStore';
+import { DigimonDisplay } from '@/components/DigimonDisplay';
+import { TaskList } from '@/components/TaskList';
+import { DailyQuotaDisplay } from '@/components/DailyQuotaDisplay';
+import { TaskForm } from '@/components/TaskForm';
+import { Task } from '@/stores/taskStore';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import PixelatedImage from '@/components/PixelatedImage';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const { userProfile } = useAuthStore();
+  const { userDigimon, fetchUserDigimon, fetchAllUserDigimon } = useDigimonStore();
+  const { 
+    tasks, 
+    fetchTasks, 
+    completeTask, 
+    createTask, 
+    updateTask,
+    checkOverdueTasks,
+    penalizedTasks,
+    dailyQuota,
+    fetchDailyQuota,
+    getExpMultiplier,
+    deleteTask
+  } = useTaskStore();
+  
+  const [isTaskFormVisible, setIsTaskFormVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
+  
+  // Fetch initial data
+  useEffect(() => {
+    const initializeData = async () => {
+      await fetchUserDigimon();
+      await fetchAllUserDigimon();
+      await fetchTasks();
+      await fetchDailyQuota();
+      await checkOverdueTasks();
+    };
+    
+    initializeData();
+  }, []);
+  
+  // Handle task completion
+  const handleCompleteTask = async (id: string) => {
+    try {
+      await completeTask(id, true); // auto-allocate stats
+      // Explicitly refresh Digimon data after task completion
+      await fetchUserDigimon();
+      await fetchDailyQuota();
+    } catch (error) {
+      console.error("Error in handleCompleteTask:", error);
+    }
+  };
+  
+  // Handle editing a task
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsTaskFormVisible(true);
+  };
+  
+  // Handle saving a task (create or update)
+  const handleSaveTask = async (taskData: Partial<Task>) => {
+    if (editingTask) {
+      await updateTask(editingTask.id, taskData);
+    } else {
+      await createTask(taskData);
+    }
+    
+    // Refresh data
+    await fetchTasks();
+    setIsTaskFormVisible(false);
+    setEditingTask(undefined);
+  };
+  
+  // Handle adding a new task
+  const handleAddTask = () => {
+    setEditingTask(undefined);
+    setIsTaskFormVisible(true);
+  };
+  
+  // Navigate to Digimon details
+  const handleDigimonPress = () => {
+    // @ts-ignore - This is a navigation route
+    router.push('/digimon-details');
+  };
+  
+  // Calculate daily quota stats
+  const dailyQuotaProps = {
+    completedToday: dailyQuota?.completed_today || 0,
+    quota: 3, // This is defined in the taskStore as DAILY_QUOTA_AMOUNT
+    streak: dailyQuota?.current_streak || 0,
+    multiplier: getExpMultiplier()
+  };
+  
+  // Add the deleteTask handler
+  const handleDeleteTask = async (id: string) => {
+    await deleteTask(id);
+    await fetchTasks();
+  };
+  
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemedView style={styles.container}>
+        {/* <View style={styles.headerBg}>
+          <IconSymbol
+            name="pawprint.fill"
+            size={170}
+            color="rgba(255,255,255,0.2)"
+            style={styles.headerImage}
+          />
+        </View> */}
+        
+        <View style={styles.topSection}>
+          {/* Digimon Display */}
+          <DigimonDisplay 
+            userDigimon={userDigimon} 
+            onPress={handleDigimonPress}
+          />
+
+          
+          {/* Daily Quota Display */}
+          <DailyQuotaDisplay {...dailyQuotaProps} />
+        </View>
+        
+        {/* Tasks List - Takes remaining space */}
+        <View style={styles.taskListContainer}>
+          <TaskList
+            tasks={tasks}
+            penalizedTasks={penalizedTasks}
+            onCompleteTask={handleCompleteTask}
+            onEditTask={handleEditTask}
+            onAddTask={handleAddTask}
+            onDeleteTask={handleDeleteTask}
+          />
+        </View>
+        
+        {/* Task Form Modal */}
+        <TaskForm
+          isVisible={isTaskFormVisible}
+          onClose={() => {
+            setIsTaskFormVisible(false);
+            setEditingTask(undefined);
+          }}
+          onSave={handleSaveTask}
+          onDelete={handleDeleteTask}
+          task={editingTask}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  headerBg: {
+    height: 120,
+    backgroundColor: '#1D3D47',
     position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    overflow: 'hidden',
   },
+  headerImage: {
+    position: 'absolute',
+    bottom: -20,
+    right: -20,
+  },
+  topSection: {
+    paddingTop: 40,
+    paddingHorizontal: 16,
+    zIndex: 1,
+  },
+  taskListContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  }
 });
