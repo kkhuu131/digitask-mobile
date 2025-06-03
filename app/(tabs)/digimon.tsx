@@ -11,11 +11,14 @@ import Toast from 'react-native-toast-message';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { SimpleProgressBar } from '@/components/ui/SimpleProgressBar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function DigimonScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets();
   
   const { 
     allUserDigimon, 
@@ -40,7 +43,7 @@ export default function DigimonScreen() {
           type: 'error',
           text1: 'Error loading Digimon',
           text2: 'Please try again later',
-          position: 'bottom',
+          position: 'top',
         });
       } finally {
         setLoading(false);
@@ -58,7 +61,7 @@ export default function DigimonScreen() {
         type: 'info',
         text1: 'Already Active',
         text2: 'This Digimon is already your active partner',
-        position: 'bottom',
+        position: 'top',
       });
       return;
     }
@@ -81,7 +84,7 @@ export default function DigimonScreen() {
               Toast.show({
                 type: 'success',
                 text1: 'Active Digimon Changed',
-                position: 'bottom',
+                position: 'top',
               });
             } catch (error) {
               console.error('Error setting active Digimon:', error);
@@ -89,7 +92,7 @@ export default function DigimonScreen() {
                 type: 'error',
                 text1: 'Error',
                 text2: 'Could not change active Digimon',
-                position: 'bottom',
+                position: 'top',
               });
             } finally {
               setLoading(false);
@@ -172,33 +175,38 @@ export default function DigimonScreen() {
   };
   
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText style={styles.title}>My Digimon</ThemedText>
-      </View>
-      
-      {allUserDigimon.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <ThemedText style={styles.emptyText}>
-            You don't have any Digimon yet!
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <ThemedText style={styles.title}>My Digimon</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            {allUserDigimon.length} Digimon in your collection
           </ThemedText>
-          <Button
-            title="Get your first Digimon"
-            onPress={() => router.push('/explore')}
-            buttonStyle={styles.getDigimonButton}
-          />
         </View>
-      ) : (
-        <FlatList
-          data={allUserDigimon}
-          renderItem={renderDigimonCard}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.gridContainer}
-          columnWrapperStyle={styles.columnWrapper}
-        />
-      )}
-    </ThemedView>
+        
+        {allUserDigimon.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <ThemedText style={styles.emptyText}>
+              You don't have any Digimon yet!
+            </ThemedText>
+            <Button
+              title="Get your first Digimon"
+              onPress={() => router.push('/explore')}
+              buttonStyle={styles.getDigimonButton}
+            />
+          </View>
+        ) : (
+          <FlatList
+            data={allUserDigimon}
+            renderItem={renderDigimonCard}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            contentContainerStyle={styles.gridContainer}
+            columnWrapperStyle={styles.columnWrapper}
+          />
+        )}
+      </ThemedView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -211,17 +219,25 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 16,
   },
   header: {
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
   },
+  subtitle: {
+    fontSize: 14,
+    opacity: 0.6,
+  },
   gridContainer: {
-    paddingBottom: 80, // Add padding for bottom tab navigation
+    paddingHorizontal: 16,
+    paddingBottom: 80,
+    paddingTop: 16,
   },
   columnWrapper: {
     justifyContent: 'space-between',

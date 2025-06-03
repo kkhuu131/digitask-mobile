@@ -15,6 +15,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarInactiveTintColor: '#999',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
@@ -30,21 +31,28 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="house.fill" color={color} size={28} />,
         }}
       />
       <Tabs.Screen
         name="digimon"
         options={{
           title: 'Digimon',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paw" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="pawprint.fill" color={color} size={28} />,
+        }}
+      />
+      <Tabs.Screen
+        name="digidex"
+        options={{
+          title: 'DigiDex',
+          tabBarIcon: ({ color }) => <IconSymbol name="books.vertical.fill" color={color} size={28} />,
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
           title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="globe" color={color} size={28} />,
         }}
       />
       <Tabs.Screen

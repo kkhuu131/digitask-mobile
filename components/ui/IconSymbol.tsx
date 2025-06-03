@@ -19,6 +19,12 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'pawprint.fill': 'pets',
+  'books.vertical.fill': 'menu-book',
+  'compass.fill': 'explore',
+  'lock.fill': 'lock',
+  'xmark.circle.fill': 'cancel',
+  // Add any other icons you need here
 } as IconMapping;
 
 /**

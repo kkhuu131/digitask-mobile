@@ -1,16 +1,13 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { LinearProgress } from '@rneui/themed';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import DigimonSprite from './DigimonSprite';
 import { UserDigimon } from '@/stores/petStore';
 import { IconSymbol } from './ui/IconSymbol';
-import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { SimpleProgressBar } from './ui/SimpleProgressBar';
-import PixelatedImage from './PixelatedImage';
+import { CircularProgress } from './ui/CircularProgress';
 
 interface DigimonDisplayProps {
   userDigimon: UserDigimon | null;
@@ -75,49 +72,45 @@ export const DigimonDisplay: React.FC<DigimonDisplayProps> = ({
       onPress={handleDetailsPress}
     >
       <ThemedView style={styles.card}>
-        {/* Digimon sprite and basic info */}
-        <View style={styles.digimonHeader}>
-          <DigimonSprite 
-            digimonName={userDigimon.digimon?.name || "Agumon"}
-            fallbackSpriteUrl={userDigimon.digimon?.sprite_url || ""}
-            happiness={userDigimon.happiness || 100}
-            size="md"
+        {/* Digimon info header */}
+        <View style={styles.infoHeader}>
+          <ThemedText style={styles.nickname}>{userDigimon.name}</ThemedText>
+          <ThemedText style={styles.species}>{userDigimon.digimon?.name}</ThemedText>
+        </View>
+        
+        {/* Digimon sprite and circular indicators */}
+        <View style={styles.spriteRow}>
+          {/* Happiness indicator on the left */}
+          <CircularProgress
+            size={60}
+            strokeWidth={6}
+            progress={happinessPercentage}
+            color={getHappinessColor()}
+            icon="heart.fill"
+            iconSize={20}
+            iconColor={getHappinessColor()}
           />
           
-          <View style={styles.infoContainer}>
-            <ThemedText style={styles.nickname}>{userDigimon.name}</ThemedText>
-            <ThemedText style={styles.species}>{userDigimon.digimon?.name}</ThemedText>
-            
-            <View style={styles.statsRow}>
-              <IconSymbol 
-                name="heart.fill" 
-                size={16} 
-                color={getHappinessColor()} 
-              />
-              <ThemedText style={styles.statLabel}>Happiness</ThemedText>
-              <SimpleProgressBar 
-                style={styles.progressBar} 
-                progress={happinessPercentage} 
-                color={getHappinessColor()}
-              />
-              <ThemedText style={styles.statValue}>{Math.round(userDigimon.happiness)}</ThemedText>
-            </View>
-            
-            <View style={styles.statsRow}>
-              <IconSymbol 
-                name="flame.fill" 
-                size={16} 
-                color="#3D7BF4" 
-              />
-              <ThemedText style={styles.statLabel}>Level</ThemedText>
-              <SimpleProgressBar 
-                style={styles.progressBar} 
-                progress={calculateLevelProgress()} 
-                color="#3D7BF4"
-              />
-              <ThemedText style={styles.statValue}>{userDigimon.current_level}</ThemedText>
-            </View>
+          {/* Digimon sprite in the center */}
+          <View style={styles.spriteContainer}>
+            <DigimonSprite 
+              digimonName={userDigimon.digimon?.name || "Agumon"}
+              fallbackSpriteUrl={userDigimon.digimon?.sprite_url || ""}
+              happiness={userDigimon.happiness || 100}
+              size="md"
+            />
           </View>
+          
+          {/* Level indicator on the right */}
+          <CircularProgress
+            size={60}
+            strokeWidth={6}
+            progress={calculateLevelProgress()}
+            color="#3D7BF4"
+            textContent={`${userDigimon.current_level}`}
+            textSize={18}
+            textColor="#3D7BF4"
+          />
         </View>
         
         {/* Bottom controls and details hint */}
@@ -150,14 +143,9 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  digimonHeader: {
-    flexDirection: 'row',
+  infoHeader: {
     alignItems: 'center',
-  },
-  infoContainer: {
-    flex: 1,
-    marginLeft: 16,
-    justifyContent: 'center',
+    marginBottom: 16,
   },
   nickname: {
     fontSize: 18,
@@ -166,28 +154,18 @@ const styles = StyleSheet.create({
   species: {
     fontSize: 14,
     opacity: 0.7,
-    marginBottom: 8,
   },
-  statsRow: {
+  spriteRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 4,
+    marginBottom: 16,
   },
-  statLabel: {
-    fontSize: 12,
-    width: 70,
-    marginLeft: 4,
-  },
-  statValue: {
-    fontSize: 12,
-    width: 25,
-    textAlign: 'right',
-  },
-  progressBar: {
+  spriteContainer: {
     flex: 1,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 100,
   },
   detailsRow: {
     flexDirection: 'row',

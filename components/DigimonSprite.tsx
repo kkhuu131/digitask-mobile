@@ -228,6 +228,7 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
               height: getSizeStyle().height
             }}
             resizeMode="contain"
+            silhouette={silhouette}
           />
         </TouchableOpacity>
       </Animated.View>

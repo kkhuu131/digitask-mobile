@@ -153,9 +153,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         // Show success toast
         Toast.show({
           type: 'success',
-          text1: 'Task Completed!',
-          text2: `+${getExpPoints(task)} XP gained`,
-          position: 'bottom',
+          text1: `Active Digimon gained +${getExpPoints(task)} XP gained ${task.category && `and +1 ${task.category}`}`,
+          text2: `Reserve Digimon gained +${Math.round(getExpPoints(task) / 2)} XP gained`,
+          position: 'top',
           visibilityTime: 2000,
         });
         

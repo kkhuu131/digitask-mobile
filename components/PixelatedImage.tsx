@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import { Canvas, Image as SkiaImage, useImage, SamplingOptions, MipmapMode, FilterMode } from '@shopify/react-native-skia';
+import { Canvas, Image as SkiaImage, useImage, FilterMode, MipmapMode, ColorMatrix } from '@shopify/react-native-skia';
 import { getImageByPath } from '../utils/generatedImageMap';
 
 interface PixelatedImageProps {
@@ -14,6 +14,7 @@ interface PixelatedImageProps {
     marginRight?: number;
   };
   resizeMode?: 'contain' | 'cover' | 'stretch' | 'center';
+  silhouette?: boolean;
 }
 
 /**
@@ -22,7 +23,8 @@ interface PixelatedImageProps {
 const PixelatedImage: React.FC<PixelatedImageProps> = ({ 
   source, 
   style = { width: 100, height: 100 },
-  resizeMode = 'contain'
+  resizeMode = 'contain',
+  silhouette = false
 }) => {
   // Get the image path from source
   const resolveImagePath = () => {
@@ -54,6 +56,7 @@ const PixelatedImage: React.FC<PixelatedImageProps> = ({
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center',
           imageRendering: 'pixelated', // This is the key CSS property for pixelated rendering
+          filter: silhouette ? 'brightness(0)' : 'none', // Simple silhouette effect for web
         }}
       />
     );
@@ -131,24 +134,32 @@ const PixelatedImage: React.FC<PixelatedImageProps> = ({
 
   return (
     <View style={[styles.container, { ...style }]}>
-      <Canvas style={styles.canvas}>
-        {image && (
-          <SkiaImage
-            image={image}
-            x={getImageDimensions().x}
-            y={getImageDimensions().y}
-            width={getImageDimensions().width}
-            height={getImageDimensions().height}
-            fit="fill"
-            sampling={{
-              filter: FilterMode.Nearest,
-              mipmap: MipmapMode.Nearest,
-            }}
-          />
+
+      <Canvas style={{ flex: 1 }}>
+        <SkiaImage x={getImageDimensions().x}
+          y={getImageDimensions().y}
+          width={getImageDimensions().width}
+          height={getImageDimensions().height}
+          image={image} fit="fill" sampling={{
+          filter: FilterMode.Nearest,
+          mipmap: MipmapMode.Nearest,
+        }}>
+        {silhouette && (
+          <ColorMatrix
+          matrix={[
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 1, 0
+          ]}
+        />
         )}
+        
+      </SkiaImage>
       </Canvas>
     </View>
   );
+
 };
 
 const styles = StyleSheet.create({

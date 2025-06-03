@@ -85,7 +85,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           type: 'error',
           text1: 'Error',
           text2: 'Please select at least one day for recurring tasks',
-          position: 'bottom',
+          position: 'top',
         });
         return;
       }
@@ -105,7 +105,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       Toast.show({
         type: 'success',
         text1: isEditing ? 'Task Updated' : 'Task Created',
-        position: 'bottom',
+        position: 'top',
         visibilityTime: 2000,
       });
     } catch (error) {
@@ -116,7 +116,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         type: 'error',
         text1: 'Error',
         text2: `Could not ${isEditing ? 'update' : 'create'} task`,
-        position: 'bottom',
+        position: 'top',
       });
     }
   };
@@ -165,7 +165,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                 Toast.show({
                   type: 'success',
                   text1: 'Task Deleted',
-                  position: 'bottom',
+                  position: 'top',
                   visibilityTime: 2000,
                 });
                 onClose();
@@ -175,7 +175,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                   type: 'error',
                   text1: 'Error',
                   text2: 'Could not delete task',
-                  position: 'bottom',
+                  position: 'top',
                 });
               }
             }
