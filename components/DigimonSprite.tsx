@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, AppState } from 'react-native';
 import { ThemedText } from './ThemedText';
 import Animated, { 
   useAnimatedStyle, 
@@ -16,6 +16,9 @@ import { getSpriteUrl } from '../utils/spriteManager';
 import type { SpriteType } from '../utils/spriteManager';
 import PixelatedImage from './PixelatedImage';
 
+// AFK timeout in milliseconds (3 minutes)
+const AFK_TIMEOUT = 1 * 60 * 1000;
+
 interface DigimonSpriteProps {
   digimonName: string;
   fallbackSpriteUrl: string;
@@ -25,6 +28,7 @@ interface DigimonSpriteProps {
   onPress?: () => void;
   showHappinessAnimations?: boolean;
   enableHopping?: boolean;
+  enableSleeping?: boolean;
   currentSpriteType?: SpriteType;
 }
 
@@ -37,6 +41,7 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
   onPress,
   showHappinessAnimations = true,
   enableHopping = false,
+  enableSleeping = false,
   currentSpriteType: externalSpriteType
 }) => {
   const [internalSpriteType, setInternalSpriteType] = useState<SpriteType>('idle1');
@@ -45,6 +50,12 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
   const [showHeart, setShowHeart] = useState(false);
   const [lookDirection, setLookDirection] = useState(1);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isAFK, setIsAFK] = useState(false);
+  
+  // Refs for tracking user activity
+  const lastActivityTime = useRef(Date.now());
+  const afkCheckInterval = useRef<number | null>(null);
+  const appState = useRef(AppState.currentState);
 
   // Animation values
   const translateY = useSharedValue(0);
@@ -60,53 +71,72 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
       setHasAnimatedSprites(false);
     }
   }, [digimonName]);
+  
+  // Set up AFK detection
+  useEffect(() => {
+    // Function to update last activity time
+    const updateActivity = () => {
+      lastActivityTime.current = Date.now();
+      if (isAFK) {
+        setIsAFK(false);
+      }
+    };
+    
+    // Set up interval to check for AFK status
+    afkCheckInterval.current = setInterval(() => {
+      const now = Date.now();
+      if (now - lastActivityTime.current > AFK_TIMEOUT && !isAFK) {
+        setIsAFK(true);
+      }
+    }, 10000); // Check every 10 seconds
+    
+    // Set up app state change listener
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        // App has come to the foreground
+        updateActivity();
+      }
+      appState.current = nextAppState;
+    });
+    
+    // For React Native, we rely on AppState changes and direct interactions
+    // with components rather than document-level events
+    
+    return () => {
+      if (afkCheckInterval.current) {
+        clearInterval(afkCheckInterval.current);
+      }
+      subscription.remove();
+    };
+  }, [isAFK]);
 
   // Set up sprite animation interval
   useEffect(() => {
     if (!hasAnimatedSprites || !showHappinessAnimations || externalSpriteType) return;
     
-    // Update sprite every 0.75 seconds for idle animation
+    // Update sprite every 0.75 seconds for idle animation or 1.5 seconds for sleeping
     const interval = setInterval(() => {
       if (isAnimating) return;
       
       // Toggle the sprite state
       setSpriteToggle(prev => !prev);
       
-      // Determine sprite type based on happiness and toggle state
+      // Determine sprite type based on AFK status, happiness and toggle state
       let newSpriteType: SpriteType;
       
-      if (happiness > 80) {
+      if (isAFK && enableSleeping) {
+        newSpriteType = spriteToggle ? "sleeping1" : "sleeping2";
+      } else if (happiness > 80) {
         newSpriteType = spriteToggle ? "idle1" : "idle2";
       } else {
         newSpriteType = spriteToggle ? "sad1" : "sad2";
       }
       
       setInternalSpriteType(newSpriteType);
-    }, 750);
+    }, isAFK ? 1000 : 750); // Slower toggle when sleeping
     
     return () => clearInterval(interval);
-  }, [hasAnimatedSprites, happiness, isAnimating, spriteToggle, showHappinessAnimations, externalSpriteType]);
-
-  // Set up hopping animation
-  useEffect(() => {
-    if (enableHopping) {
-      translateY.value = withRepeat(
-        withSequence(
-          withTiming(-5, { duration: 300, easing: Easing.out(Easing.quad) }),
-          withTiming(0, { duration: 300, easing: Easing.bounce }),
-          withTiming(-3, { duration: 200, easing: Easing.out(Easing.quad) }),
-          withTiming(0, { duration: 200, easing: Easing.bounce }),
-          withTiming(-5, { duration: 300, easing: Easing.out(Easing.quad) }),
-          withTiming(0, { duration: 300, easing: Easing.bounce }),
-          withTiming(0, { duration: 1000 }) // Pause before repeating
-        ),
-        -1, // Infinite repeat
-        false
-      );
-    } else {
-      translateY.value = 0;
-    }
-  }, [enableHopping]);
+  }, [hasAnimatedSprites, happiness, isAnimating, spriteToggle, showHappinessAnimations, externalSpriteType, isAFK]);
 
   // Use external sprite type if provided, otherwise use internal state
   const effectiveSpriteType = externalSpriteType || internalSpriteType;
@@ -121,7 +151,13 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
 
   // Handle sprite press
   const handleSpritePress = () => {
-    if (!onPress || isAnimating) return;
+    // Update activity time
+    lastActivityTime.current = Date.now();
+    if (isAFK) {
+      setIsAFK(false);
+    }
+    
+    if (isAnimating || !enableHopping) return;
     
     setIsAnimating(true);
     
@@ -131,7 +167,11 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
     
     // Show happy reaction temporarily for animated sprites
     if (hasAnimatedSprites && showHappinessAnimations && !externalSpriteType) {
+      // Alternate between happy and cheer sprites
       setInternalSpriteType('happy');
+      setTimeout(() => setInternalSpriteType('happy'), 1000);
+      setTimeout(() => setInternalSpriteType('cheer'), 1000);
+      
       setShowHeart(true);
       
       // Heart animation
@@ -153,19 +193,32 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
       heartTranslateY.value = withTiming(-30, { duration: 1000 });
     }
     
-    // Hopping animation for press
-    translateY.value = withSequence(
-      withTiming(-10, { duration: 200, easing: Easing.out(Easing.quad) }),
-      withTiming(0, { duration: 200, easing: Easing.bounce }),
-      withTiming(-7, { duration: 150, easing: Easing.out(Easing.quad) }),
-      withTiming(0, { duration: 150, easing: Easing.bounce }),
-      withTiming(0, { duration: 100 }, () => {
-        runOnJS(finishAnimation)();
-      })
-    );
+    if (enableHopping) {
+      // Quick double hop animation
+      translateY.value = withSequence(
+        withTiming(-15, { duration: 150, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: 150, easing: Easing.bounce }),
+        withTiming(-10, { duration: 150, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: 150, easing: Easing.bounce }),
+        withTiming(0, { duration: 1000 }, () => {
+          runOnJS(finishAnimation)();
+        })
+      );
+    } else {
+      // Just a single hop if hopping is disabled
+      translateY.value = withSequence(
+        withTiming(-10, { duration: 200, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: 200, easing: Easing.bounce }),
+        withTiming(0, { duration: 100 }, () => {
+          runOnJS(finishAnimation)();
+        })
+      );
+    }
     
-    // Call the provided onPress handler
-    onPress();
+    // Call the provided onPress handler if it exists
+    if (onPress) {
+      onPress();
+    }
   };
   
   // Function to finish animation sequence
@@ -175,7 +228,9 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
     
     // Reset to normal sprite type based on happiness (only if we're managing the sprite internally)
     if (hasAnimatedSprites && showHappinessAnimations && !externalSpriteType) {
-      if (happiness > 80) {
+      if (isAFK && enableSleeping) {
+        setInternalSpriteType(spriteToggle ? "sleeping1" : "sleeping2");
+      } else if (happiness > 80) {
         setInternalSpriteType(spriteToggle ? "idle1" : "idle2");
       } else {
         setInternalSpriteType(spriteToggle ? "sad1" : "sad2");

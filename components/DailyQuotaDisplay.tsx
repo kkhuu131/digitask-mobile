@@ -30,7 +30,7 @@ export const DailyQuotaDisplay: React.FC<DailyQuotaDisplayProps> = ({
         <View style={styles.titleSection}>
           <ThemedText style={styles.title}>Daily Quota</ThemedText>
           <ThemedText style={styles.subtitle}>
-            {isComplete ? 'Completed' : `${completedToday}/${quota} tasks`}
+            {`${completedToday}/${quota} tasks`}
           </ThemedText>
         </View>
         
@@ -38,13 +38,12 @@ export const DailyQuotaDisplay: React.FC<DailyQuotaDisplayProps> = ({
           <View style={styles.statItem}>
             <IconSymbol name="flame.fill" size={16} color="#FF9500" />
             <ThemedText style={styles.statValue}>{streak}</ThemedText>
-            <ThemedText style={styles.statLabel}>streak</ThemedText>
+            <ThemedText style={styles.statLabel}> day streak</ThemedText>
           </View>
           
           <View style={styles.statItem}>
-            <IconSymbol name="chevron.left.forwardslash.chevron.right" size={16} color="#30B0C7" />
             <ThemedText style={styles.statValue}>{multiplier}x</ThemedText>
-            <ThemedText style={styles.statLabel}>bonus</ThemedText>
+            <ThemedText style={styles.statLabel}> XP</ThemedText>
           </View>
         </View>
       </View>

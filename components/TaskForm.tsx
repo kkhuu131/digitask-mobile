@@ -587,10 +587,12 @@ const styles = StyleSheet.create({
   cancelButton: {
     minWidth: 120,
     borderColor: '#3D7BF4',
+    borderRadius: 8,
   },
   saveButton: {
     minWidth: 120,
     backgroundColor: '#3D7BF4',
+    borderRadius: 8,
   },
   dropdownButton: {
     flexDirection: 'row',
@@ -639,5 +641,6 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: 'transparent',
     borderColor: '#F44336',
+    borderRadius: 8,
   },
 }); 

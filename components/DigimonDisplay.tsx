@@ -8,6 +8,8 @@ import { UserDigimon } from '@/stores/petStore';
 import { IconSymbol } from './ui/IconSymbol';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { CircularProgress } from './ui/CircularProgress';
+import TypeAttributeIcon from './TypeAttributeIcon';
+import { DigimonAttribute, DigimonType } from '@/stores/battleStore';
 
 interface DigimonDisplayProps {
   userDigimon: UserDigimon | null;
@@ -72,24 +74,32 @@ export const DigimonDisplay: React.FC<DigimonDisplayProps> = ({
       onPress={handleDetailsPress}
     >
       <ThemedView style={styles.card}>
+      <View style={styles.typeAttributeContainer}>
+        <TypeAttributeIcon type={userDigimon.digimon?.type as DigimonType} attribute={userDigimon.digimon?.attribute as DigimonAttribute} size="sm"/>
+      </View>
         {/* Digimon info header */}
         <View style={styles.infoHeader}>
-          <ThemedText style={styles.nickname}>{userDigimon.name}</ThemedText>
+          <ThemedText style={styles.nickname}>{userDigimon.name || userDigimon.digimon?.name}</ThemedText>
           <ThemedText style={styles.species}>{userDigimon.digimon?.name}</ThemedText>
         </View>
         
         {/* Digimon sprite and circular indicators */}
         <View style={styles.spriteRow}>
           {/* Happiness indicator on the left */}
-          <CircularProgress
-            size={60}
-            strokeWidth={6}
-            progress={happinessPercentage}
-            color={getHappinessColor()}
-            icon="heart.fill"
-            iconSize={20}
-            iconColor={getHappinessColor()}
-          />
+          <View style={styles.indicatorContainer}>
+            <CircularProgress
+              size={60}
+              strokeWidth={6}
+              progress={happinessPercentage}
+              color={getHappinessColor()}
+              icon="heart.fill"
+              iconSize={20}
+              iconColor={getHappinessColor()}
+            />
+            <ThemedText style={styles.indicatorText}>
+              {Math.round(userDigimon.happiness)} / 100
+            </ThemedText>
+          </View>
           
           {/* Digimon sprite in the center */}
           <View style={styles.spriteContainer}>
@@ -97,20 +107,27 @@ export const DigimonDisplay: React.FC<DigimonDisplayProps> = ({
               digimonName={userDigimon.digimon?.name || "Agumon"}
               fallbackSpriteUrl={userDigimon.digimon?.sprite_url || ""}
               happiness={userDigimon.happiness || 100}
+              enableHopping={true}
+              enableSleeping={true}
               size="md"
             />
           </View>
           
           {/* Level indicator on the right */}
-          <CircularProgress
-            size={60}
-            strokeWidth={6}
-            progress={calculateLevelProgress()}
-            color="#3D7BF4"
-            textContent={`${userDigimon.current_level}`}
-            textSize={18}
-            textColor="#3D7BF4"
-          />
+          <View style={styles.indicatorContainer}>
+            <CircularProgress
+              size={60}
+              strokeWidth={6}
+              progress={calculateLevelProgress()}
+              color="#3D7BF4"
+              textContent={`${userDigimon.current_level}`}
+              textSize={18}
+              textColor="#3D7BF4"
+            />
+            <ThemedText style={styles.indicatorText}>
+              {Math.floor(userDigimon.experience_points % (userDigimon.current_level * 20))} / {userDigimon.current_level * 20}
+            </ThemedText>
+          </View>
         </View>
         
         {/* Bottom controls and details hint */}
@@ -166,10 +183,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: 100,
+    marginTop: 10,
+  },
+  indicatorContainer: {
+    alignItems: 'center',
+  },
+  indicatorText: {
+    fontSize: 12,
+    marginTop: 4,
+    opacity: 0.7,
   },
   detailsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     marginTop: 12,
     paddingTop: 8,
     borderTopWidth: 1,
@@ -188,5 +214,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     padding: 24,
+  },
+  typeAttributeContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 }); 

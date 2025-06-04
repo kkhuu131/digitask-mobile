@@ -11,7 +11,7 @@ import Toast from 'react-native-toast-message';
 interface TaskListProps {
   tasks: Task[];
   penalizedTasks: string[];
-  onCompleteTask: (id: string) => Promise<void>;
+  onCompleteTask: (id: string, autoAllocate: boolean) => Promise<void>;
   onEditTask: (task: Task) => void;
   onAddTask: () => void;
   onDeleteTask: (id: string) => Promise<void>;
@@ -28,6 +28,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onDeleteTask
 }) => {
   const [filter, setFilter] = useState<FilterType>('pending');
+  const [autoAllocate, setAutoAllocate] = useState<boolean>(true);
   
   // Group tasks based on current filter
   const groupedTasks = useMemo(() => {
@@ -122,7 +123,7 @@ export const TaskList: React.FC<TaskListProps> = ({
       Toast.show({
         type: 'success',
         text1: 'Task deleted',
-        position: 'bottom',
+        position: 'top',
         visibilityTime: 2000,
       });
     } catch (error) {
@@ -131,8 +132,16 @@ export const TaskList: React.FC<TaskListProps> = ({
         type: 'error',
         text1: 'Error',
         text2: 'Could not delete task',
-        position: 'bottom',
+        position: 'top',
       });
+    }
+  };
+  
+  const handleCompleteTask = async (id: string, autoAllocate: boolean) => {
+    try {
+      await onCompleteTask(id, autoAllocate);
+    } catch (error) {
+      console.error('Error completing task:', error);
     }
   };
   
@@ -144,7 +153,8 @@ export const TaskList: React.FC<TaskListProps> = ({
     >
       <TaskItem
         task={item}
-        onComplete={onCompleteTask}
+        autoAllocate={autoAllocate}
+        onComplete={handleCompleteTask}
         onPress={onEditTask}
         isPenalized={penalizedTasks.includes(item.id)}
       />
@@ -171,12 +181,28 @@ export const TaskList: React.FC<TaskListProps> = ({
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.title}>Tasks</ThemedText>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={onAddTask}
-        >
-          <IconSymbol name="plus" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.autoAllocateButton}
+            onPress={() => {
+              setAutoAllocate(!autoAllocate);
+              console.log('AutoAllocate:', autoAllocate);
+            }}
+          >
+            <ThemedText style={styles.autoAllocateText}>Auto</ThemedText>
+            <IconSymbol 
+              name={autoAllocate ? "checkmark.circle.fill" : "circle"} 
+              size={18} 
+              color={autoAllocate ? "#3D7BF4" : "#999"} 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={onAddTask}
+          >
+            <IconSymbol name="plus" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
       
       <FlatList
@@ -221,6 +247,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  autoAllocateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(61, 123, 244, 0.1)',
+  },
+  autoAllocateText: {
+    fontSize: 12,
+    marginRight: 4,
+    color: '#3D7BF4',
   },
   addButton: {
     backgroundColor: '#3D7BF4',

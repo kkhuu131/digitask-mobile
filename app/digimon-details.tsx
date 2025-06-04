@@ -16,6 +16,9 @@ import Toast from 'react-native-toast-message';
 import { supabase } from '@/lib/supabase';
 import { SimpleProgressBar } from '@/components/ui/SimpleProgressBar';
 import { Colors } from '@/constants/Colors';
+import TypeAttributeIcon from '@/components/TypeAttributeIcon';
+import { DigimonAttribute } from '@/stores/battleStore';
+import { DigimonType } from '@/stores/battleStore';
 
 // Function to calculate remaining stat points based on level
 const getRemainingStatPoints = (digimon: UserDigimon) => {
@@ -406,19 +409,20 @@ export default function DigimonDetailsScreen() {
       
       {/* Digimon profile section */}
       <View style={styles.profileSection}>
+        <View style={{width: '40%', justifyContent: 'center', alignItems: 'center'}}>
         <DigimonSprite 
           digimonName={targetDigimon.digimon?.name || "Agumon"}
           fallbackSpriteUrl={targetDigimon.digimon?.sprite_url || ""}
           happiness={targetDigimon.happiness}
           size="md"
         />
+        </View>
         
         <View style={styles.nameContainer}>
-          <ThemedText style={styles.nickname}>{targetDigimon.name}</ThemedText>
-          <ThemedText style={styles.species}>{targetDigimon.digimon?.name}</ThemedText>
+          <ThemedText style={styles.nickname}>{targetDigimon.name || targetDigimon.digimon?.name}</ThemedText>
           
           <View style={styles.levelContainer}>
-            <ThemedText style={styles.levelText}>Level {targetDigimon.current_level}</ThemedText>
+            <ThemedText style={styles.levelText}>Lv. {targetDigimon.current_level}</ThemedText>
             <View style={styles.xpContainer}>
 
               
@@ -429,13 +433,18 @@ export default function DigimonDetailsScreen() {
               <ThemedText style={styles.xpText}>
                 {Math.floor(xpInfo.current)}/{xpInfo.total} XP
               </ThemedText>
-                          {/* Personality */}
-            {targetDigimon.personality && (
-              <View style={styles.personalityContainer}>
-                <ThemedText style={styles.personalityLabel}>Personality:</ThemedText>
-                <ThemedText style={styles.personalityValue}>{targetDigimon.personality}</ThemedText>
+              <View>
+                <ThemedText style={styles.species}>#{targetDigimon.digimon?.id} {targetDigimon.digimon?.name} is a {<TypeAttributeIcon type={targetDigimon.digimon?.type as DigimonType} attribute={targetDigimon.digimon?.attribute as DigimonAttribute} size="xs" />} {targetDigimon.digimon?.type} {targetDigimon.digimon?.attribute} {targetDigimon.digimon?.stage} Digimon.</ThemedText>
               </View>
-            )}
+
+              {/* Personality */}
+              {targetDigimon.personality && (
+                <View style={styles.personalityContainer}>
+                  <ThemedText style={styles.personalityLabel}>Personality:</ThemedText>
+                  <ThemedText style={styles.personalityValue}>{targetDigimon.personality}</ThemedText>
+                </View>
+              )}
+
             </View>
           </View>
         </View>
@@ -559,6 +568,7 @@ export default function DigimonDetailsScreen() {
                         fallbackSpriteUrl={evolution.sprite_url}
                         size="sm"
                         silhouette={!discoveredDigimon.includes(evolution.digimon_id)}
+                        showHappinessAnimations={false}
                       />
                     </View>
                     {/* <ThemedText style={styles.evolutionName}>
@@ -598,11 +608,9 @@ export default function DigimonDetailsScreen() {
                         fallbackSpriteUrl={evolution.sprite_url}
                         size="sm"
                         silhouette={!discoveredDigimon.includes(evolution.digimon_id)}
+                        showHappinessAnimations={false}
                       />
                     </View>
-                    {/* <ThemedText style={styles.evolutionName}>
-                      {!discoveredDigimon.includes(evolution.digimon_id) ? '???' : evolution.name}
-                    </ThemedText> */}
                   </View>
                 </TouchableOpacity>
               ))}
@@ -664,6 +672,9 @@ export default function DigimonDetailsScreen() {
                     {/* Evolution Arrow */}
                     <View style={styles.evolutionArrow}>
                       <IconSymbol name="arrow.right" size={28} color="#3D7BF4" />
+                      <ThemedText style={styles.levelIndicator}>
+                        +{ 1 + Math.floor(targetDigimon.current_level / 10)} ABI
+                      </ThemedText>
                     </View>
                     
                     {/* Evolution Digimon */}
@@ -683,6 +694,7 @@ export default function DigimonDetailsScreen() {
                       <ThemedText style={styles.levelIndicator}>
                         Lv. 1
                       </ThemedText>
+                      
                     </View>
                   </View>
                   
@@ -807,9 +819,12 @@ export default function DigimonDetailsScreen() {
                       </ThemedText>
                     </View>
                     
-                    {/* Evolution Arrow */}
+                    {/* Devolution Arrow */}
                     <View style={styles.evolutionArrow}>
                       <IconSymbol name="arrow.right" size={28} color="#3D7BF4" />
+                      <ThemedText style={styles.levelIndicator}>
+                        +{ 1 + Math.floor(targetDigimon.current_level / 5)} ABI
+                      </ThemedText>
                     </View>
                     
                     {/* Evolution Digimon */}
@@ -884,14 +899,16 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   nickname: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
+    textAlign: 'center',
   },
   species: {
-    fontSize: 16,
-    opacity: 0.7,
-    marginBottom: 8,
+    fontSize: 12,
+    opacity: 0.5,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   levelContainer: {
     marginTop: 4,
@@ -1002,8 +1019,8 @@ const styles = StyleSheet.create({
   },
   personalityContainer: {
     flexDirection: 'row',
-    marginTop: 16,
-    padding: 8,
+    paddingVertical: 4,
+    justifyContent: 'center',
   },
   personalityLabel: {
     fontSize: 16,

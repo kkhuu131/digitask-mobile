@@ -221,6 +221,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   completeTask: async (id: string, autoAllocate = false) => {
     try {
       console.log("Completing task:", id);
+      console.log("AutoAllocate:", autoAllocate);
       const task = get().tasks.find((t) => t.id === id);
 
       if (!task) {
@@ -312,6 +313,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
             useDigimonStore.getState().fetchUserDailyStatGains();
           } else {
+            console.log("Not auto-allocating stats");
             // Get current saved stats from the database
             const { data: profileData, error: profileError } = await supabase
               .from("profiles")

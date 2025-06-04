@@ -13,13 +13,15 @@ const DAY_ABBREVIATIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 interface TaskItemProps {
   task: Task;
-  onComplete: (id: string) => void;
+  autoAllocate: boolean;
+  onComplete: (id: string, autoAllocate: boolean) => void;
   onPress: (task: Task) => void;
   isPenalized?: boolean;
 }
 
 export const TaskItem: React.FC<TaskItemProps> = ({ 
   task, 
+  autoAllocate,
   onComplete, 
   onPress,
   isPenalized = false
@@ -148,13 +150,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       
       try {
         // Complete the task
-        await onComplete(task.id);
+        await onComplete(task.id, autoAllocate);
         
         // Show success toast
         Toast.show({
           type: 'success',
-          text1: `Active Digimon gained +${getExpPoints(task)} XP gained ${task.category && `and +1 ${task.category}`}`,
-          text2: `Reserve Digimon gained +${Math.round(getExpPoints(task) / 2)} XP gained`,
+          text1: `Active gained +${getExpPoints(task)} XP ${task.category && `and +1 ${task.category}`}`,
+          text2: `Reserve gained +${Math.round(getExpPoints(task) / 2)} XP`,
           position: 'top',
           visibilityTime: 2000,
         });

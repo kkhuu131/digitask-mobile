@@ -9,6 +9,9 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { ScrollView, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '@/lib/supabase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DigimonAttribute } from '@/stores/battleStore';
+import TypeAttributeIcon from '@/components/TypeAttributeIcon';
+import { DigimonType } from '@/stores/battleStore';
 
 interface DigimonListItem {
   id: number;
@@ -140,7 +143,8 @@ export default function DigiDexScreen() {
             <ThemedView style={styles.modalContainer}>
               <View style={styles.modalHeader}>
                 <ThemedText style={styles.modalTitle}>
-                  {isDiscovered ? selectedDigimon.name : '???'}
+                  {isDiscovered ? selectedDigimon.name : '???'}{' '}
+                  <TypeAttributeIcon type={selectedDigimon.type as DigimonType} attribute={selectedDigimon.attribute as DigimonAttribute} size="xs" />
                 </ThemedText>
                 <TouchableOpacity 
                   style={styles.closeButton}

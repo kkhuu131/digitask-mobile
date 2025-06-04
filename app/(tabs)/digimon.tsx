@@ -13,6 +13,9 @@ import { Colors } from '@/constants/Colors';
 import { SimpleProgressBar } from '@/components/ui/SimpleProgressBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { DigimonAttribute } from '@/stores/battleStore';
+import { DigimonType } from '@/stores/battleStore';
+import TypeAttributeIcon from '@/components/TypeAttributeIcon';
 
 export default function DigimonScreen() {
   const router = useRouter();
@@ -170,6 +173,10 @@ export default function DigimonScreen() {
             <IconSymbol name="star" size={18} color="#FFC107" />
           </TouchableOpacity>
         )}
+
+        <View style={styles.typeAttributeContainer}>
+          <TypeAttributeIcon type={item.digimon?.type as DigimonType} attribute={item.digimon?.attribute as DigimonAttribute} size="sm" />
+        </View>
       </TouchableOpacity>
     );
   };
@@ -197,7 +204,13 @@ export default function DigimonScreen() {
           </View>
         ) : (
           <FlatList
-            data={allUserDigimon}
+            data={allUserDigimon.sort((a, b) => {
+              // First sort by is_active (true comes first)
+              if (a.is_active && !b.is_active) return -1;
+              if (!a.is_active && b.is_active) return 1;
+              // Then sort by current_level
+              return b.current_level - a.current_level;
+            })}
             renderItem={renderDigimonCard}
             keyExtractor={(item) => item.id}
             numColumns={2}
@@ -311,6 +324,16 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: 'rgba(255, 193, 7, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  typeAttributeContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },

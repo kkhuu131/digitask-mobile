@@ -49,9 +49,9 @@ export default function HomeScreen() {
   }, []);
   
   // Handle task completion
-  const handleCompleteTask = async (id: string) => {
+  const handleCompleteTask = async (id: string, autoAllocate = true) => {
     try {
-      await completeTask(id, true); // auto-allocate stats
+      await completeTask(id, autoAllocate); // auto-allocate stats
       // Explicitly refresh Digimon data after task completion
       await fetchUserDigimon();
       await fetchDailyQuota();
