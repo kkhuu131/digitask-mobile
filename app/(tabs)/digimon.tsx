@@ -193,7 +193,7 @@ export default function DigimonScreen() {
         <View style={styles.header}>
           <ThemedText style={styles.title}>My Digimon</ThemedText>
           <ThemedText style={styles.subtitle}>
-            {allUserDigimon.length} Digimon in your collection
+            Click on a Digimon to view details.
           </ThemedText>
         </View>
         
@@ -210,6 +210,13 @@ export default function DigimonScreen() {
             </View>
           ) : (
             <FlatList
+              ListHeaderComponent={() => (
+                <View>
+                  <ThemedText style={[styles.storageTitle, { marginTop: 0 }]}>
+                  Party {allUserDigimon.length} / 12
+                </ThemedText>
+                </View>
+              )}
               data={allUserDigimon.sort((a, b) => {
                 // First sort by is_active (true comes first)
                 if (a.is_active && !b.is_active) return -1;
@@ -226,7 +233,7 @@ export default function DigimonScreen() {
                 storageDigimon.length > 0 ? (
                   <View style={styles.storageSection}>
                     <ThemedText style={styles.storageTitle}>
-                      {storageDigimon.length} Digimon in Storage
+                      Storage
                     </ThemedText>
                     <FlatList
                       data={storageDigimon.sort((a, b) => b.current_level - a.current_level)}

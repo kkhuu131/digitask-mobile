@@ -42,6 +42,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="battle"
+        options={{
+          title: 'Battle',
+          tabBarIcon: ({ color }) => <IconSymbol name="bolt.fill" color={color} size={28} />,
+        }}
+      />
+      <Tabs.Screen
         name="digidex"
         options={{
           title: 'DigiDex',

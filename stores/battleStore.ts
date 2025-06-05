@@ -8,6 +8,7 @@ import {
 } from "../utils/digimonStatCalculation";
 import { DIGIMON_LOOKUP_TABLE } from "../constants/digimonLookup";
 import { useTitleStore } from "./titleStore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const calculateUserPowerRating = (allDigimon: UserDigimon[]) => {
   // Calculate power rating for each digimon
@@ -707,31 +708,36 @@ const STORAGE_KEY_OPTIONS = "battle_options";
 const STORAGE_KEY_TIMESTAMP = "battle_options_timestamp";
 const STORAGE_KEY_SHOULD_REFRESH = "battle_options_should_refresh";
 
-// Helper to save battle options to localStorage
-const saveBattleOptionsToStorage = (
+// Helper to save battle options to AsyncStorage
+const saveBattleOptionsToStorage = async (
   options: BattleOption[],
   timestamp: number,
   shouldRefresh: boolean
 ) => {
   try {
-    localStorage.setItem(STORAGE_KEY_OPTIONS, JSON.stringify(options));
-    localStorage.setItem(STORAGE_KEY_TIMESTAMP, timestamp.toString());
-    localStorage.setItem(STORAGE_KEY_SHOULD_REFRESH, shouldRefresh.toString());
+    await AsyncStorage.setItem(STORAGE_KEY_OPTIONS, JSON.stringify(options));
+    await AsyncStorage.setItem(STORAGE_KEY_TIMESTAMP, timestamp.toString());
+    await AsyncStorage.setItem(
+      STORAGE_KEY_SHOULD_REFRESH,
+      shouldRefresh.toString()
+    );
   } catch (e) {
-    console.error("Failed to save battle options to localStorage:", e);
+    console.error("Failed to save battle options to AsyncStorage:", e);
   }
 };
 
-// Helper to load battle options from localStorage
-const loadBattleOptionsFromStorage = (): {
+// Helper to load battle options from AsyncStorage
+const loadBattleOptionsFromStorage = async (): Promise<{
   options: BattleOption[];
   timestamp: number | null;
   shouldRefresh: boolean;
-} => {
+}> => {
   try {
-    const optionsStr = localStorage.getItem(STORAGE_KEY_OPTIONS);
-    const timestampStr = localStorage.getItem(STORAGE_KEY_TIMESTAMP);
-    const shouldRefreshStr = localStorage.getItem(STORAGE_KEY_SHOULD_REFRESH);
+    const optionsStr = await AsyncStorage.getItem(STORAGE_KEY_OPTIONS);
+    const timestampStr = await AsyncStorage.getItem(STORAGE_KEY_TIMESTAMP);
+    const shouldRefreshStr = await AsyncStorage.getItem(
+      STORAGE_KEY_SHOULD_REFRESH
+    );
 
     return {
       options: optionsStr ? JSON.parse(optionsStr) : [],
@@ -739,14 +745,25 @@ const loadBattleOptionsFromStorage = (): {
       shouldRefresh: shouldRefreshStr ? shouldRefreshStr === "true" : true,
     };
   } catch (e) {
-    console.error("Failed to load battle options from localStorage:", e);
+    console.error("Failed to load battle options from AsyncStorage:", e);
     return { options: [], timestamp: null, shouldRefresh: true };
   }
 };
 
 export const useBattleStore = create<BattleState>((set, get) => {
-  // Load initial state from localStorage
-  const { options, timestamp, shouldRefresh } = loadBattleOptionsFromStorage();
+  // Initialize with empty values since AsyncStorage is async
+  const initialState = { options: [], timestamp: null, shouldRefresh: true };
+
+  // Load data from AsyncStorage in the background
+  loadBattleOptionsFromStorage().then(
+    ({ options, timestamp, shouldRefresh }) => {
+      set({
+        battleOptions: options,
+        lastOptionsRefresh: timestamp,
+        shouldRefreshOptions: shouldRefresh,
+      });
+    }
+  );
 
   return {
     teamBattleHistory: [],
@@ -754,10 +771,10 @@ export const useBattleStore = create<BattleState>((set, get) => {
     loading: false,
     error: null,
     dailyBattlesRemaining: 5,
-    battleOptions: options,
+    battleOptions: [],
     selectedBattleOption: null,
-    lastOptionsRefresh: timestamp,
-    shouldRefreshOptions: shouldRefresh,
+    lastOptionsRefresh: null,
+    shouldRefreshOptions: true,
     isBattleInProgress: false,
 
     selectAndStartBattle: async (optionId: string) => {
@@ -1026,6 +1043,8 @@ export const useBattleStore = create<BattleState>((set, get) => {
           get().battleOptions,
           get().lastOptionsRefresh || Date.now(),
           true
+        ).catch((err) =>
+          console.error("Failed to save battle options after battle:", err)
         );
         set({ shouldRefreshOptions: true });
 
@@ -1282,8 +1301,11 @@ export const useBattleStore = create<BattleState>((set, get) => {
             difficultyOrder[b.difficulty as keyof typeof difficultyOrder]
         );
 
-        // At the end, update localStorage along with the state
-        saveBattleOptionsToStorage(battleOptions, currentTime, false);
+        // At the end, update AsyncStorage along with the state
+        saveBattleOptionsToStorage(battleOptions, currentTime, false).catch(
+          (err) =>
+            console.error("Failed to save battle options during refresh:", err)
+        );
         set({
           battleOptions,
           loading: false,
@@ -1407,11 +1429,12 @@ export const useBattleStore = create<BattleState>((set, get) => {
     },
 
     setShouldRefreshOptions: (shouldRefresh: boolean) => {
-      // Save to localStorage
-      localStorage.setItem(
+      // Save to AsyncStorage
+      AsyncStorage.setItem(
         STORAGE_KEY_SHOULD_REFRESH,
         shouldRefresh.toString()
-      );
+      ).catch((err) => console.error("Failed to save refresh state:", err));
+
       set({ shouldRefreshOptions: shouldRefresh });
     },
 

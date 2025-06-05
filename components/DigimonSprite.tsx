@@ -23,7 +23,7 @@ interface DigimonSpriteProps {
   digimonName: string;
   fallbackSpriteUrl: string;
   happiness?: number;
-  size?: 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xxxs' | 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   silhouette?: boolean;
   onPress?: () => void;
   showHappinessAnimations?: boolean;
@@ -241,7 +241,8 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
   // Size dimensions for container
   const getSizeStyle = () => {
     switch(size) {
-      case 'xxs': return { width: 32, height: 24 };
+      case 'xxxs': return { width: 24, height: 24 };
+      case 'xxs': return { width: 32, height: 32 };
       case 'xs': return { width: 48, height: 48 };
       case 'sm': return { width: 64, height: 64 };
       case 'md': return { width: 128, height: 128 };
