@@ -28,18 +28,24 @@ export default function DigimonScreen() {
     userDigimon, 
     fetchAllUserDigimon, 
     fetchUserDigimon, 
-    setActiveDigimon 
+    setActiveDigimon,
+    fetchStorageDigimon,
+    storageDigimon
   } = useDigimonStore();
   
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Fetch all Digimon data on component mount
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        await fetchAllUserDigimon();
-        await fetchUserDigimon();
+        // Load all data in parallel for faster loading
+        await Promise.all([
+          fetchAllUserDigimon(),
+          fetchUserDigimon(),
+          fetchStorageDigimon()
+        ]);
       } catch (error) {
         console.error('Error loading Digimon data:', error);
         Toast.show({
@@ -128,7 +134,7 @@ export default function DigimonScreen() {
         style={[
           styles.digimonCard,
           isDark ? styles.digimonCardDark : null,
-          isActive ? styles.activeDigimonCard : null
+          isActive ? styles.activeDigimonCard : null,
         ]}
         onPress={() => handleViewDetails(item)}
         activeOpacity={0.7}
@@ -146,15 +152,15 @@ export default function DigimonScreen() {
             digimonName={item.digimon?.name || "Unknown"}
             fallbackSpriteUrl={item.digimon?.sprite_url || ""}
             happiness={item.happiness}
-            size="sm"
+            size="xs"
             enableHopping={false}
           />
         </View>
         
         <View style={styles.infoContainer}>
-          <ThemedText style={styles.digimonName} numberOfLines={1}>
+          {/* <ThemedText style={styles.digimonName} numberOfLines={1}>
             {item.name || item.digimon?.name}
-          </ThemedText>
+          </ThemedText> */}
           <ThemedText style={styles.levelText}>
             Lv. {item.current_level}
           </ThemedText>
@@ -165,14 +171,14 @@ export default function DigimonScreen() {
           />
         </View>
         
-        {!isActive && (
+        {/* {!isActive && (
           <TouchableOpacity 
             style={styles.setActiveButton}
             onPress={() => handleSetActive(item.id)}
           >
             <IconSymbol name="star" size={18} color="#FFC107" />
           </TouchableOpacity>
-        )}
+        )} */}
 
         <View style={styles.typeAttributeContainer}>
           <TypeAttributeIcon type={item.digimon?.type as DigimonType} attribute={item.digimon?.attribute as DigimonAttribute} size="sm" />
@@ -191,32 +197,52 @@ export default function DigimonScreen() {
           </ThemedText>
         </View>
         
-        {allUserDigimon.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <ThemedText style={styles.emptyText}>
-              You don't have any Digimon yet!
-            </ThemedText>
-            <Button
-              title="Get your first Digimon"
-              onPress={() => router.push('/explore')}
-              buttonStyle={styles.getDigimonButton}
-            />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ThemedText style={styles.loadingText}>Loading Digimon...</ThemedText>
           </View>
         ) : (
-          <FlatList
-            data={allUserDigimon.sort((a, b) => {
-              // First sort by is_active (true comes first)
-              if (a.is_active && !b.is_active) return -1;
-              if (!a.is_active && b.is_active) return 1;
-              // Then sort by current_level
-              return b.current_level - a.current_level;
-            })}
-            renderItem={renderDigimonCard}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            contentContainerStyle={styles.gridContainer}
-            columnWrapperStyle={styles.columnWrapper}
-          />
+          allUserDigimon.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <ThemedText style={styles.emptyText}>
+                You don't have any Digimon yet!
+              </ThemedText>
+            </View>
+          ) : (
+            <FlatList
+              data={allUserDigimon.sort((a, b) => {
+                // First sort by is_active (true comes first)
+                if (a.is_active && !b.is_active) return -1;
+                if (!a.is_active && b.is_active) return 1;
+                // Then sort by current_level
+                return b.current_level - a.current_level;
+              })}
+              renderItem={({ item }) => renderDigimonCard({ item })}
+              keyExtractor={(item) => `main-${item.id}`}
+              numColumns={3}
+              contentContainerStyle={styles.gridContainer}
+              columnWrapperStyle={styles.columnWrapper}
+              ListFooterComponent={() => (
+                storageDigimon.length > 0 ? (
+                  <View style={styles.storageSection}>
+                    <ThemedText style={styles.storageTitle}>
+                      {storageDigimon.length} Digimon in Storage
+                    </ThemedText>
+                    <FlatList
+                      data={storageDigimon.sort((a, b) => b.current_level - a.current_level)}
+                      renderItem={({ item }) => renderDigimonCard({ item })}
+                      keyExtractor={(item) => `storage-${item.id}`}
+                      numColumns={3}
+                      scrollEnabled={false}
+                      contentContainerStyle={styles.gridContainer}
+                      columnWrapperStyle={styles.columnWrapper}
+                      removeClippedSubviews={false}
+                    />
+                  </View>
+                ) : null
+              )}
+            />
+          )
         )}
       </ThemedView>
     </GestureHandlerRootView>
@@ -254,9 +280,22 @@ const styles = StyleSheet.create({
   },
   columnWrapper: {
     justifyContent: 'space-between',
+    width: '100%',
+  },
+  storageSection: {
+    marginTop: 24,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  storageTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   digimonCard: {
-    width: '48%',
+    width: '31%',
     marginBottom: 16,
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
@@ -268,7 +307,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
-    padding: 12,
+    padding: 8,
   },
   digimonCardDark: {
     backgroundColor: '#2C2C2E',
@@ -295,17 +334,18 @@ const styles = StyleSheet.create({
   },
   spriteContainer: {
     alignItems: 'center',
-    marginBottom: 8,
-    height: 80,
+    marginBottom: 4,
+    height: 50,
     justifyContent: 'center',
   },
   infoContainer: {
     alignItems: 'center',
   },
   digimonName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 2,
+    textAlign: 'center',
   },
   digimonSpecies: {
     fontSize: 12,
@@ -318,11 +358,11 @@ const styles = StyleSheet.create({
   },
   setActiveButton: {
     position: 'absolute',
-    top: 8,
-    left: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    top: 6,
+    left: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 193, 7, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -330,10 +370,10 @@ const styles = StyleSheet.create({
 
   typeAttributeContainer: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
+    top: 6,
+    right: 6,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -351,5 +391,17 @@ const styles = StyleSheet.create({
   getDigimonButton: {
     backgroundColor: '#3D7BF4',
     paddingHorizontal: 24,
+  },
+  mainCollectionCard: {
+    // Remove this style or leave it empty
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    opacity: 0.7,
   },
 }); 

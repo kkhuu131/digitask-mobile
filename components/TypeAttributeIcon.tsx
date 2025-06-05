@@ -33,16 +33,16 @@ const TypeAttributeIcon: React.FC<TypeAttributeIconProps> = ({
   
   // Size classes for the icon itself
   const iconSizeClasses = {
-    xs: 16,
-    sm: 32,
+    xs: 20,
+    sm: 24,
     md: 64,
     lg: 128
   };
   
   // Size classes for the background circle
   const backgroundSizeClasses = {
-    xs: 16,
-    sm: 32,
+    xs: 20,
+    sm: 24,
     md: 64,
     lg: 128
   };

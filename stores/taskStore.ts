@@ -358,7 +358,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             }
 
             // Also update localStorage for immediate UI feedback
-            localStorage.setItem("savedStats", JSON.stringify(savedStats));
+            // localStorage.setItem("savedStats", JSON.stringify(savedStats));
 
             // Update the pet store's userDailyStatGains
             useDigimonStore.getState().fetchUserDailyStatGains();

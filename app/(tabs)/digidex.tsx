@@ -144,7 +144,11 @@ export default function DigiDexScreen() {
               <View style={styles.modalHeader}>
                 <ThemedText style={styles.modalTitle}>
                   {isDiscovered ? selectedDigimon.name : '???'}{' '}
-                  <TypeAttributeIcon type={selectedDigimon.type as DigimonType} attribute={selectedDigimon.attribute as DigimonAttribute} size="xs" />
+                  {
+                    isDiscovered && (
+                      <TypeAttributeIcon type={selectedDigimon.type as DigimonType} attribute={selectedDigimon.attribute as DigimonAttribute} size="xs" />
+                    )
+                  }
                 </ThemedText>
                 <TouchableOpacity 
                   style={styles.closeButton}

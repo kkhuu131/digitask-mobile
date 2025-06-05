@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Button, Divider, LinearProgress } from '@rneui/themed';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useDigimonStore, UserDigimon, EvolutionOption } from '@/stores/petStore';
+import { useDigimonStore, UserDigimon, EvolutionOption, } from '@/stores/petStore';
 import { useAuthStore } from '@/stores/authStore';
 import DigimonSprite from '@/components/DigimonSprite';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -108,7 +108,11 @@ export default function DigimonDetailsScreen() {
     checkEvolution,
     evolveDigimon,
     devolveDigimon,
-    discoveredDigimon
+    discoveredDigimon,
+    setActiveDigimon,
+    moveToStorage,
+    moveToActiveParty,
+    storageDigimon
   } = useDigimonStore();
   
   // State for saved stats
@@ -120,10 +124,20 @@ export default function DigimonDetailsScreen() {
   // Find the specific Digimon if an ID was provided
   const targetDigimon = useMemo(() => {
     if (digimonId) {
-      return allUserDigimon.find(d => d.id === digimonId) || userDigimon;
+      // First check in active party Digimon
+      const activePartyMatch = allUserDigimon.find(d => d.id === digimonId);
+      if (activePartyMatch) return activePartyMatch;
+      
+      // Then check in storage Digimon
+      const storageMatch = storageDigimon.find(d => d.id === digimonId);
+      if (storageMatch) return storageMatch;
+      
+      // Fallback to active Digimon
+      return userDigimon;
     }
+    // Default to active Digimon if no ID provided
     return userDigimon;
-  }, [digimonId, allUserDigimon, userDigimon]);
+  }, [digimonId, allUserDigimon, userDigimon, storageDigimon]);
   
   // Fetch user's saved stats
   useEffect(() => {
@@ -383,6 +397,139 @@ export default function DigimonDetailsScreen() {
     setSelectedDevolution(devolution);
     setShowDevolutionModal(true);
   };
+
+  // Handle setting a Digimon as active
+  const handleSetActive = async (digimonId: string) => {
+    // Don't do anything if this is already the active Digimon
+    if (userDigimon?.id === digimonId) {
+      Toast.show({
+        type: 'info',
+        text1: 'Already Active',
+        text2: 'This Digimon is already your active partner',
+        position: 'top',
+      });
+      return;
+    }
+    
+    // Confirm with the user
+    Alert.alert(
+      "Change Active Digimon?",
+      "Do you want to set this Digimon as your active partner?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await setActiveDigimon(digimonId);
+              Toast.show({
+                type: 'success',
+                text1: 'Active Digimon Changed',
+                position: 'top',
+              });
+            } catch (error) {
+              console.error('Error setting active Digimon:', error);
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Could not change active Digimon',
+                position: 'top',
+              });
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+      // Handle setting a Digimon as active
+  const handleMoveToStorage = async (digimonId: string) => {
+    
+    // Confirm with the user
+    Alert.alert(
+      "Move to Storage?",
+      "Do you want to move this Digimon to storage?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await moveToStorage(digimonId);
+              Toast.show({
+                type: 'success',
+                text1: 'Digimon Moved to Storage',
+                position: 'top',
+              });
+              // Navigate back to avoid state inconsistency
+              router.back();
+            } catch (error) {
+              console.error('Error moving Digimon to storage:', error);
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Could not move Digimon to storage',
+                position: 'top',
+              });
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleMoveToActiveParty = async (digimonId: string) => {
+    
+    // Confirm with the user
+    Alert.alert(
+      "Move to Active Party?",
+      "Do you want to move this Digimon to the active party?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await moveToActiveParty(digimonId);
+              Toast.show({
+                type: 'success',
+                text1: 'Digimon Moved to Active Party',
+                position: 'top',
+              });
+              // Navigate back to avoid state inconsistency
+              router.back();
+            } catch (error) {
+              console.error('Error moving Digimon to active party:', error);
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Could not move Digimon to active party',
+                position: 'top',
+              });
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
   
   if (!targetDigimon) {
     return (
@@ -422,7 +569,12 @@ export default function DigimonDetailsScreen() {
           <ThemedText style={styles.nickname}>{targetDigimon.name || targetDigimon.digimon?.name}</ThemedText>
           
           <View style={styles.levelContainer}>
-            <ThemedText style={styles.levelText}>Lv. {targetDigimon.current_level}</ThemedText>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+              <ThemedText style={styles.levelText}>Lv. {targetDigimon.current_level}</ThemedText>
+              <ThemedText style={styles.xpText}>
+                {Math.floor(xpInfo.current)}/{xpInfo.total} XP
+              </ThemedText>
+            </View>
             <View style={styles.xpContainer}>
 
               
@@ -430,24 +582,77 @@ export default function DigimonDetailsScreen() {
                 progress={xpInfo.percentage}
                 color="#3D7BF4"
               />
-              <ThemedText style={styles.xpText}>
-                {Math.floor(xpInfo.current)}/{xpInfo.total} XP
-              </ThemedText>
-              <View>
-                <ThemedText style={styles.species}>#{targetDigimon.digimon?.id} {targetDigimon.digimon?.name} is a {<TypeAttributeIcon type={targetDigimon.digimon?.type as DigimonType} attribute={targetDigimon.digimon?.attribute as DigimonAttribute} size="xs" />} {targetDigimon.digimon?.type} {targetDigimon.digimon?.attribute} {targetDigimon.digimon?.stage} Digimon.</ThemedText>
-              </View>
+
+            </View>
+          </View>
+          <View style={{alignItems: 'center', justifyContent: 'center'}}>
+                <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}>
+                  <View style={{marginRight: 4}}>
+                    <TypeAttributeIcon 
+                      type={targetDigimon.digimon?.type as DigimonType} 
+                      attribute={targetDigimon.digimon?.attribute as DigimonAttribute} 
+                      size="xs"
+                    />
+                  </View>
+                  <ThemedText style={styles.species}>
+                    {targetDigimon.digimon?.type} / {targetDigimon.digimon?.attribute} / {targetDigimon.digimon?.stage}
+                  </ThemedText>
+                </View>
+          </View>
 
               {/* Personality */}
               {targetDigimon.personality && (
                 <View style={styles.personalityContainer}>
-                  <ThemedText style={styles.personalityLabel}>Personality:</ThemedText>
+                  <ThemedText style={styles.personalityLabel}>Personality</ThemedText>
                   <ThemedText style={styles.personalityValue}>{targetDigimon.personality}</ThemedText>
                 </View>
               )}
-
-            </View>
-          </View>
         </View>
+      </View>
+      
+      {/* Action Buttons */}
+      <View style={styles.actionButtonsContainer}>
+        {/* Set Active/Active Status Button */}
+        {targetDigimon.is_active ? (
+          <View style={[styles.actionButton, styles.actionButtonDisabled]}>
+            <IconSymbol name="star.fill" size={16} color="#757575" style={{marginRight: 6}} />
+            <ThemedText style={styles.actionButtonText}>Active</ThemedText>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.activeActionButton]}
+            onPress={() => handleSetActive(targetDigimon.id)}
+          >
+            <IconSymbol name="star" size={16} color="#FFFFFF" style={{marginRight: 6}} />
+            <ThemedText style={styles.activeActionButtonText}>Set Active</ThemedText>
+          </TouchableOpacity>
+        )}
+
+        {/* Move to Storage/Active Party Button */}
+        {targetDigimon.is_in_storage ? (
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.storageActionButton]}
+            onPress={() => handleMoveToActiveParty(targetDigimon.id)}
+          >
+            <IconSymbol name="plus.circle" size={16} color="#FFFFFF" style={{marginRight: 6}} />
+            <ThemedText style={styles.storageActionButtonText}>Move to Party</ThemedText>
+          </TouchableOpacity>
+        ) : (
+          targetDigimon.is_active ? (
+            <View style={[styles.actionButton, styles.actionButtonDisabled]}>
+              <IconSymbol name="archivebox" size={16} color="#757575" style={{marginRight: 6}} />
+              <ThemedText style={styles.actionButtonText}>Move to Storage</ThemedText>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.storageActionButton]}
+              onPress={() => handleMoveToStorage(targetDigimon.id)}
+            >
+              <IconSymbol name="archivebox" size={16} color="#FFFFFF" style={{marginRight: 6}} />
+              <ThemedText style={styles.storageActionButtonText}>Move to Storage</ThemedText>
+            </TouchableOpacity>
+          )
+        )}
       </View>
       
       {/* Tab navigation */}
@@ -905,13 +1110,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   species: {
-    fontSize: 12,
+    fontSize: 14,
     opacity: 0.5,
-    marginBottom: 4,
+    marginVertical: 4,
     textAlign: 'center',
+    justifyContent: 'center',
   },
   levelContainer: {
     marginTop: 4,
+    marginBottom: 4,
   },
   levelText: {
     fontSize: 16,
@@ -1248,5 +1455,43 @@ const styles = StyleSheet.create({
   },
   disabledEvolveButtonText: {
     color: 'rgba(255, 255, 255, 0.6)',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 4,
+  },
+  actionButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+  },
+  actionButtonText: {
+    fontWeight: 'bold',
+    color: '#757575',
+  },
+  activeActionButton: {
+    backgroundColor: '#3D7BF4',
+  },
+  activeActionButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  storageActionButton: {
+    backgroundColor: '#FF9800',
+  },
+  storageActionButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
 }); 

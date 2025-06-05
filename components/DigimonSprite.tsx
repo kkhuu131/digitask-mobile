@@ -242,7 +242,7 @@ const DigimonSprite: React.FC<DigimonSpriteProps> = ({
   const getSizeStyle = () => {
     switch(size) {
       case 'xxs': return { width: 32, height: 24 };
-      case 'xs': return { width: 32, height: 32 };
+      case 'xs': return { width: 48, height: 48 };
       case 'sm': return { width: 64, height: 64 };
       case 'md': return { width: 128, height: 128 };
       case 'lg': return { width: 256, height: 256 };
