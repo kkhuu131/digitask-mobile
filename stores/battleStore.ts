@@ -882,16 +882,15 @@ export const useBattleStore = create<BattleState>((set, get) => {
 
           opponentProfile = profile;
         } else {
+          let id = 0;
           // Create wild Digimon team
           opponentTeamData = await Promise.all(
             option.team.digimon.map(async (d) => {
               const digimonId = Number(d.id);
               const digimonData = DIGIMON_LOOKUP_TABLE[digimonId];
-
+              id++;
               return {
-                id: crypto.randomUUID
-                  ? crypto.randomUUID()
-                  : "00000000-0000-0000-0000-000000000001",
+                id: "00000000-0000-0000-0000-00000000000" + id.toString(),
                 user_id: "00000000-0000-0000-0000-000000000000",
                 digimon_id: d.id,
                 name: d.name,
@@ -974,7 +973,7 @@ export const useBattleStore = create<BattleState>((set, get) => {
         await useDigimonStore.getState().feedAllDigimon(xpGain);
 
         const simulatedTeamBattle = {
-          id: crypto.randomUUID ? crypto.randomUUID() : "temp-id-" + Date.now(),
+          id: "temp-id-" + Date.now(),
           created_at: new Date().toISOString(),
           user_team: userTeamData.map((d) => ({
             user_id: d.user_id,
@@ -1081,10 +1080,7 @@ export const useBattleStore = create<BattleState>((set, get) => {
           const updatedBattle = {
             ...state.currentTeamBattle,
             bitsReward: bitsReward,
-            id:
-              state.currentTeamBattle?.id ||
-              crypto.randomUUID?.() ||
-              `temp-id-${Date.now()}`,
+            id: state.currentTeamBattle?.id || `temp-id-${Date.now()}`,
             user_team: state.currentTeamBattle?.user_team || [],
             opponent_team: state.currentTeamBattle?.opponent_team || [],
             winner_id: state.currentTeamBattle?.winner_id || "",
@@ -1479,7 +1475,7 @@ export const useBattleStore = create<BattleState>((set, get) => {
         // }
 
         return {
-          id: crypto.randomUUID ? crypto.randomUUID() : "temp-id-" + Date.now(),
+          id: "temp-id-" + Date.now(),
           created_at: new Date().toISOString(),
           user_team: userTeamData.map((d: any) => ({
             user_id: d.user_id,

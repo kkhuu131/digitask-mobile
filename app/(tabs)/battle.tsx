@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, FlatList, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, Text, TouchableOpacity, FlatList, ScrollView, ActivityIndicator, Alert, useColorScheme } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useBattleStore } from '@/stores/battleStore';
@@ -11,9 +11,13 @@ import TypeAttributeIcon from '@/components/TypeAttributeIcon';
 import { DigimonAttribute, DigimonType } from '@/stores/battleStore';
 import { format } from 'date-fns';
 import Toast from 'react-native-toast-message';
+import TeamBattleAnimation from '@/components/TeamBattleAnimation';
 
 export default function BattleScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const { 
     battleOptions, 
     getBattleOptions, 
@@ -25,7 +29,8 @@ export default function BattleScreen() {
     error,
     clearCurrentTeamBattle,
     dailyBattlesRemaining,
-    checkDailyBattleLimit
+    checkDailyBattleLimit,
+    isBattleInProgress
   } = useBattleStore();
 
   const { 
@@ -37,11 +42,75 @@ export default function BattleScreen() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'battle' | 'team' | 'history'>('battle');
   const [localLoading, setLocalLoading] = useState(false);
+  // Track local state for battle options and daily battles remaining
+  const [localBattleOptions, setLocalBattleOptions] = useState(battleOptions);
+  const [localDailyBattlesRemaining, setLocalDailyBattlesRemaining] = useState(dailyBattlesRemaining);
+  // Track when a battle is completed
+  const [battleJustCompleted, setBattleJustCompleted] = useState(false);
+  // Keep track of last battle ID to detect new battles
+  const lastBattleIdRef = useRef<string | null>(null);
+  // State for battle animation
+  const [showBattleAnimation, setShowBattleAnimation] = useState(false);
 
   // Get team digimon
   const teamDigimon = allUserDigimon.filter(d => d.is_on_team);
   // Get non-team digimon (excluding storage)
   const nonTeamDigimon = allUserDigimon.filter(d => !d.is_on_team && !d.is_in_storage);
+
+  // Monitor battle state changes
+  useEffect(() => {
+    // Check if we're in a battle or just completed one
+    if (isBattleInProgress) {
+      // Battle is in progress, ensure loading indicator shows
+      setLocalLoading(true);
+    } 
+    else if (currentTeamBattle && currentTeamBattle.id !== lastBattleIdRef.current) {
+      // Battle just completed (new battle result available)
+      lastBattleIdRef.current = currentTeamBattle.id;
+      setBattleJustCompleted(true);
+      
+      // Update local UI state immediately
+      setLocalDailyBattlesRemaining(prev => Math.max(0, prev - 1));
+      
+      // Show battle animation instead of toast
+      setShowBattleAnimation(true);
+    }
+  }, [currentTeamBattle, isBattleInProgress, teamDigimon]);
+
+  // Handle battle completion process
+  useEffect(() => {
+    if (battleJustCompleted && !isBattleInProgress && !showBattleAnimation) {
+      const completePostBattleProcess = async () => {
+        try {
+          // Update all necessary data in the background
+          await fetchTeamBattleHistory();
+          await fetchAllUserDigimon();
+          await checkDailyBattleLimit();
+          await getBattleOptions(true);
+          
+          // Reset battle state
+          clearCurrentTeamBattle();
+          setSelectedOption(null);
+          setBattleJustCompleted(false);
+        } catch (error) {
+          console.error('Error completing battle updates:', error);
+        } finally {
+          setLocalLoading(false);
+        }
+      };
+      
+      completePostBattleProcess();
+    }
+  }, [battleJustCompleted, isBattleInProgress, showBattleAnimation]);
+
+  // Update local state when store state changes
+  useEffect(() => {
+    setLocalBattleOptions(battleOptions);
+  }, [battleOptions]);
+
+  useEffect(() => {
+    setLocalDailyBattlesRemaining(dailyBattlesRemaining);
+  }, [dailyBattlesRemaining]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -82,29 +151,17 @@ export default function BattleScreen() {
 
   const handleStartBattle = async (optionId: string) => {
     // Prevent multiple clicks while loading
-    if (!optionId || loading || localLoading) return;
+    if (!optionId || loading || localLoading || isBattleInProgress) return;
     
     try {
       setLocalLoading(true);
       setSelectedOption(optionId);
-      await selectAndStartBattle(optionId);
       
-      // If battle started successfully, show a message
-      if (currentTeamBattle) {
-        Toast.show({
-          type: 'success',
-          text1: 'Battle completed!',
-          text2: currentTeamBattle.winner_id === teamDigimon[0]?.user_id 
-            ? 'You won the battle!' 
-            : 'You lost the battle.',
-          position: 'top',
-        });
-        
-        // Clear the battle after showing the message
-        setTimeout(() => {
-          handleBattleComplete();
-        }, 2000);
-      }
+      // Remove the selected option from local UI immediately
+      setLocalBattleOptions(prev => prev.filter(option => option.id !== optionId));
+      
+      // Start the battle
+      await selectAndStartBattle(optionId);
     } catch (error) {
       console.error('Error starting battle:', error);
       Toast.show({
@@ -113,26 +170,17 @@ export default function BattleScreen() {
         text2: 'Please try again later',
         position: 'top',
       });
-    } finally {
+      
+      // If error, restore the local battle options
+      setLocalBattleOptions(battleOptions);
       setLocalLoading(false);
     }
   };
 
-  const handleBattleComplete = () => {
-    clearCurrentTeamBattle();
-    
-    // Fetch the battle history after clearing the current battle
-    fetchTeamBattleHistory();
-    
-    // Refresh all user Digimon data to update XP and levels in the UI
-    fetchAllUserDigimon();
-    
-    // Refresh the daily battle limit to update the counter
-    checkDailyBattleLimit();
-    
-    // Force refresh battle options immediately
-    getBattleOptions(true);
-    setSelectedOption(null);
+  // Handle battle animation completion
+  const handleBattleAnimationComplete = () => {
+    setShowBattleAnimation(false);
+    setBattleJustCompleted(true);
   };
 
   const handleToggleTeamMember = async (digimon: UserDigimon) => {
@@ -157,6 +205,7 @@ export default function BattleScreen() {
     return (
       <View style={[
         styles.battleOptionCard,
+        isDark && styles.battleOptionCardDark,
         selectedOption === item.id && styles.selectedBattleOption
       ]}>
         <View style={styles.battleOptionHeader}>
@@ -176,8 +225,8 @@ export default function BattleScreen() {
         </View>
         
         <View style={styles.battleTeamContainer}>
-          {item.team.digimon.map((digimon: any) => (
-            <View key={`${digimon.id}-${digimon.name}`} style={styles.battleTeamMember}>
+          {item.team.digimon.map((digimon: any, index: number) => (
+            <View key={index} style={styles.battleTeamMember}>
               <View style={styles.battleSpriteContainer}>
                 <DigimonSprite 
                   digimonName={digimon.name}
@@ -203,15 +252,16 @@ export default function BattleScreen() {
         <TouchableOpacity
           style={[
             styles.battleButton,
-            (loading || localLoading || dailyBattlesRemaining <= 0 || teamDigimon.length < 1) && 
+            (loading || localLoading || localDailyBattlesRemaining <= 0 || teamDigimon.length < 1 || isBattleInProgress) && 
               styles.disabledButton
           ]}
           onPress={() => handleStartBattle(item.id)}
-          disabled={loading || localLoading || dailyBattlesRemaining <= 0 || teamDigimon.length < 1}
+          disabled={loading || localLoading || localDailyBattlesRemaining <= 0 || teamDigimon.length < 1 || isBattleInProgress}
         >
           <ThemedText style={styles.battleButtonText}>
             {loading || localLoading ? "Starting..." : 
-             dailyBattlesRemaining <= 0 ? "No battles left" : 
+             isBattleInProgress ? "Battle in progress..." :
+             localDailyBattlesRemaining <= 0 ? "No battles left" : 
              teamDigimon.length < 1 ? "Need team" : "Battle!"}
           </ThemedText>
         </TouchableOpacity>
@@ -223,7 +273,7 @@ export default function BattleScreen() {
   const renderTeamMember = ({ item }: { item: UserDigimon }) => {
     return (
       <TouchableOpacity 
-        style={[styles.teamMemberCard, item.is_on_team && styles.activeTeamMember]}
+        style={[styles.teamMemberCard, isDark && styles.teamMemberCardDark, item.is_on_team && styles.activeTeamMember]}
         onPress={() => handleToggleTeamMember(item)}
         disabled={loading || localLoading}
       >
@@ -264,7 +314,7 @@ export default function BattleScreen() {
     const battleDate = new Date(item.created_at);
     
     return (
-      <View style={styles.historyItem}>
+      <View style={[styles.historyItem, isDark && styles.historyItemDark]}>
         <View style={styles.historyHeader}>
           <ThemedText style={[
             styles.historyResult,
@@ -302,7 +352,7 @@ export default function BattleScreen() {
           </View>
           
           <View style={styles.historyTeam}>
-            <ThemedText style={styles.historyTeamLabel}>Opponent</ThemedText>
+            <ThemedText style={styles.historyTeamLabel}>{item.opponent?.username || 'Opponent'}</ThemedText>
             <View style={styles.historyTeamMembers}>
               {item.opponent_team.map((digimon: any) => (
                 <View key={digimon.id} style={styles.historyTeamMember}>
@@ -329,7 +379,7 @@ export default function BattleScreen() {
       <View style={styles.header}>
         <ThemedText style={styles.title}>Battle Arena</ThemedText>
         <ThemedText style={styles.subtitle}>
-          Daily Battles: {dailyBattlesRemaining} remaining
+          Daily Battles: {localDailyBattlesRemaining} remaining
         </ThemedText>
       </View>
       
@@ -380,13 +430,13 @@ export default function BattleScreen() {
       {activeTab === 'battle' && (
         <ScrollView style={styles.contentContainer}>
           <View style={styles.battleOptionsContainer}>
-            {battleOptions.map((option) => (
+            {localBattleOptions.map((option) => (
               <View key={option.id} style={styles.battleOptionWrapper}>
                 {renderBattleOption({ item: option })}
               </View>
             ))}
             
-            {battleOptions.length === 0 && !loading && !localLoading && (
+            {localBattleOptions.length === 0 && !loading && !localLoading && (
               <View style={styles.emptyStateContainer}>
                 <ThemedText style={styles.emptyStateText}>
                   No battle options available. Try adding more Digimon to your team.
@@ -407,16 +457,16 @@ export default function BattleScreen() {
         <ScrollView style={styles.contentContainer}>
           <View style={styles.teamSection}>
             <ThemedText style={styles.sectionTitle}>
-              Battle Team ({teamDigimon.length}/3)
+              Team ({teamDigimon.length}/3)
             </ThemedText>
             <ThemedText style={styles.sectionDescription}>
-              Select up to 3 Digimon for your battle team
+              Select up to 3 Digimon for your team
             </ThemedText>
             
             {teamDigimon.length === 0 ? (
               <View style={styles.emptyStateContainer}>
                 <ThemedText style={styles.emptyStateText}>
-                  You don't have any Digimon on your battle team yet.
+                  You don't have any Digimon on your team yet.
                 </ThemedText>
               </View>
             ) : (
@@ -431,7 +481,7 @@ export default function BattleScreen() {
           </View>
           
           <View style={styles.teamSection}>
-            <ThemedText style={styles.sectionTitle}>Available Digimon</ThemedText>
+            <ThemedText style={styles.sectionTitle}>Reserve</ThemedText>
             
             {nonTeamDigimon.length === 0 ? (
               <View style={styles.emptyStateContainer}>
@@ -468,6 +518,15 @@ export default function BattleScreen() {
           }
         />
       )}
+
+      {/* Battle Animation */}
+      {currentTeamBattle && showBattleAnimation && (
+        <TeamBattleAnimation
+          teamBattle={currentTeamBattle}
+          onComplete={handleBattleAnimationComplete}
+          visible={showBattleAnimation}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -475,6 +534,7 @@ export default function BattleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingBottom: 80,
   },
   header: {
     paddingHorizontal: 16,
@@ -546,7 +606,14 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderRadius: 12,
     padding: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF'
+  },
+  battleOptionCardDark: {
+    borderWidth: 1,
+    borderColor: '#424242',
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: '#1E1E1E'
   },
   selectedBattleOption: {
     borderColor: '#3D7BF4',
@@ -655,6 +722,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
   },
+  teamMemberCardDark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#424242',
+    borderRadius: 8,
+    backgroundColor: '#1E1E1E',
+  },
   activeTeamMember: {
     borderColor: '#4CAF50',
     backgroundColor: 'rgba(76, 175, 80, 0.05)',
@@ -691,6 +767,14 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     backgroundColor: '#FFFFFF',
+  },
+  historyItemDark: {
+    borderWidth: 1,
+    borderColor: '#424242',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: '#1E1E1E',
   },
   historyHeader: {
     flexDirection: 'row',

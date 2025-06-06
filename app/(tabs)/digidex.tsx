@@ -369,6 +369,7 @@ export default function DigiDexScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingBottom: 80,
   },
   header: {
     paddingHorizontal: 16,
